@@ -6,28 +6,34 @@ Created on Thu Jul 12 22:12:08 2018
 Features to implement:
     1. Make function to get angle (based on shortest vectors under periodic boundary condition)
     2. Digest system argument for bonding (regular expression?)
+    6. Implementation to digest CONTCAR or POSCAR files
+-----------------Done-----------------------------
     3. Cover variety (num: atom index from 1-n, atom_index=Fe1)
     4. Cover multiple statement of argument (ex. M-O bonds, M-O-M angles, searching method is needed)
     5. Cover multiple selection of target structure
-    6. Interface. Implementation to digest CONTCAR or POSCAR files
     7. How to print. print labels first. Need to cover 4.
-    8. Will I make it print the pwd, and time?
 
 System arguments: XML file name, output filename, Type of elements
 """
 #from pymatgen.electronic_structure import dos
-from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.core.periodic_table import Element
-from pymatgen.electronic_structure.core import Spin
-from pymatgen.util.coord_utils import pbc_shortest_vectors, get_angle
+from pymatgen.io.vasp.outputs import Vasprun, Poscar
+#from pymatgen.core.periodic_table import Element
+#from pymatgen.electronic_structure.core import Spin
+#from pymatgen.core.structure import Structure
+from pymatgen import Structure
+from pymatgen.util.coord import pbc_shortest_vectors, get_angle
 import sys
+import re
 
 #import os
 #import numpy as np
 
+
+#sys.argv=['script_name',"SFO_P30_AFM_G.xml","SFO_U0_G30",'Fe5-O18', 'Fe5-O1','Fe5-O18-Fe8','a']
+
 ###### System arguments: XML file name, output filename, Type of elements #################
-#xml_filename=sys.argv[1]
-#system_name=sys.argv[2]
+xml_filename=sys.argv[1]
+system_name=sys.argv[2]
 #
 #list_element=[]
 #list_sites=[]
@@ -39,19 +45,19 @@ import sys
 
 ##imports vasprun.xml into dos object
 #dos_vrun = Vasprun("SFO_P30_AFM_G.xml")
-xml_filename="SFO_P30_AFM_G.xml"
-system_name="SFO_U0_G30"
-list_element=['Sr','Fe','O']
-list_sites=['Fe1']
-list_bond=['Fe1-O18']
+
 
 dos_vrun=Vasprun(xml_filename)
 total_dos = dos_vrun.complete_dos
 
 #get structure from vasprun
 struct = dos_vrun.structures[-1]
+#P=Poscar.from_file('SMO_U0_E0.vasp')
+#struct = P.struct
 
-#For easy use, Labe them in conventional manner. labeled as Element + site position in poscar (i.e. BaTiO3 --> Ba1, Ti2, O1, O2, O3)
+### Make dictionary: from label to site index ############
+#For easy use, Labe them in conventional manner. labeled as Element + site position in poscar 
+#(i.e. BaTiO3 --> Ba1, Ti2, O1, O2, O3)
 n_atom_count_dict=dict()
 label2site_index=dict()
 for i in range(0,struct.num_sites):
@@ -62,106 +68,97 @@ for i in range(0,struct.num_sites):
         n_atom_count_dict.update({struct[i].specie:1})
     #Example: BaTiO3 --> Ba1:0 Ti1:1 O1:2 O2:3 O3:4
     label2site_index.update({'{0}{1}'.format(struct.species[i],n_atom_count_dict[struct[i].specie]):i})
+##########################################################
+
+def Bond_angle(pmg_struct, label2site_index, atom1_label,atom2_label,atom3_label):
+    '''
+    input: atom1_label, atom2_label, atom3_label -- str,  Ex) Fe5, O1, etc. 
+            label2site_index -- dictionary defined in script
+            pmg_struct -- pymatgen structure
+    output: angle -- float, Angle of (atom1-atom2-atom3) will be calculated.
+        Angle is calculated by using shortest vector of (atom1-atom2) and 
+        (atom3-atom2) within periodic boundary condition.
+    '''
+    # Get fractional coordinates for each atoms
+    atom1_fcoords=pmg_struct.sites[label2site_index[atom1_label]].frac_coords
+    atom2_fcoords=pmg_struct.sites[label2site_index[atom2_label]].frac_coords
+    atom3_fcoords=pmg_struct.sites[label2site_index[atom3_label]].frac_coords
+    # pbc_shortest_vector from atom2 to atom1
+    vector1=pbc_shortest_vectors(pmg_struct.lattice,atom2_fcoords,atom1_fcoords)
+    # pbc_shortest_vector from atom2 to atom3
+    vector2=pbc_shortest_vectors(pmg_struct.lattice,atom2_fcoords,atom3_fcoords)
+    
+    # angle betseen two vectors
+    # pbc_shortest_vector can digest set of sites,
+    #but here we only use one 1 site to get angle.
+    angle=get_angle(vector1[0][0],vector2[0][0])
+    return angle
+
+def Bond_length(pmg_struct, label2site_index, atom1_label,atom2_label):
+    '''
+    input: atom1_label, atom2_label -- str,  Ex) Fe5, O1, etc. 
+            label2site_index -- dictionary defined in script
+            pmg_struct -- pymatgen structure
+    output: bondlength -- float, bond length of (atom1-atom2) will be calculated.
+    '''
+    # Get fractional coordinates for each atoms
+    atom1_site_index=label2site_index[atom1_label]
+    atom2_site_index=label2site_index[atom2_label]
+    bondlength=pmg_struct.get_distance(atom1_site_index,atom2_site_index)
+    return bondlength
 
 
-#struct.sites[8].distance(struct.sites[2])
-# Band gap
-label1=total_dos.get_gap()
-# l_ap
-#label1=struct.sites[label2site_index['Fe5']].distance(struct.sites[label2site_index['O18']])
-label2=struct.get_distance(label2site_index['Fe5'],label2site_index['O18'])
-# l_bs_c
-#label2=struct.sites[label2site_index['Fe5']].distance(struct.sites[label2site_index['O1']])
-label3=struct.get_distance(label2site_index['Fe5'],label2site_index['O1'])
-# l_bs_O19
-#label3=struct.sites[label2site_index['Fe5']].distance(struct.sites[label2site_index['O19']])
-label4=struct.get_distance(label2site_index['Fe5'],label2site_index['O19'])
-# l_Bs_O15
-#label4=struct.sites[label2site_index['Fe5']].distance(struct.sites[label2site_index['O15']])
-label5=struct.get_distance(label2site_index['Fe5'],label2site_index['O15'])
-# l_ave
-label6=(label2+2*label3+label4+label5)/5
-# l_bs_ave
-label7=(2*label3+label4+label5)/4
-# bond_ratio
-label8=label2/label7
-# a
-label9=struct.lattice.a
-# b
-label10=struct.lattice.b
-# c
-label11=struct.lattice.c
-#V
-label12=struct.lattice.volume
-print('{0}\t{1:.3f}\t{2:.4f}\t{3:.4f}\t{4:.4f}\t{5:.4f}\t{6:.4f}\t{7:.4f}\t{8:.4f}\t{9:.4f}\t{10:.4f}\t{11:.4f}\t{12:.4f}'.format(system_name,label1,label2,label3,label4,label5,label6,label7,label8,label9,label10,label11,label12))
-
-vector1=pbc_shortest_vectors(struct.lattice, struct.sites[label2site['O18']].frac_coords,struct.sites[label2site['Fe5']].frac_coords)
-latt=struct.lattice
-frac1=struct.sites[label2site_index['O18']].frac_coords
-frac2=struct.sites[label2site_index['Fe5']].frac_coords
-
-vector2=pbc_shortest_vectors(struct.lattice, struct.sites[label2site['O18']].frac_coords,struct.sites[label2site['Fe8']].frac_coords)
-print(get_angle(vector1[0][0],vector2[0][0]))
-
-#### Define ISPIN #####
-ispin=len(total_dos.densities)
-spin_list=[Spin.up, Spin.down]
-
-
-####### Get DOS of each element ############        
-#element_dos=total_dos.get_element_dos()
-# Usage: element_dos[Element["Fe"]].densities[Spin.up]
-
-####### Print with p4vasp data format ###########
-
-#### Print header, including band gap, and list of printed DOS ######
-#out_file1=open(out_filename1,'w')
-##out_file1.write('# Total(Up, Down), Sr(Up,Down), Fe(Up,Down), O(Up,Down), Fe1(Up,Down)\n')
-#list_printed=list_element+list_sites
-#if ispin==2:
-#    out_file1.write('# BandGap: {0:.3f}eV, Label: Spin up/down for Total, '.format(total_dos.get_gap())+', '.join(list_printed)+'\n')
-#else:
-#    out_file1.write('# BandGap: {0:.3f}eV, Label: Spin up for Total, '.format(total_dos.get_gap())+', '.join(list_printed)+'\n')
-#  
-#                  
-## Energy grid point is obtained from site_dos of the first atom
-#n_E_grid=len(total_dos.get_site_dos(struct[0]).energies)
-#
-##Printing Total_up
-#for i in range(n_E_grid):
-#    out_file1.write('{0:.4f}\t{1:.4f}\n'.format(total_dos.energies[i]-total_dos.efermi,total_dos.densities[Spin.up][i]))
-##p4vasp format: Spacer between different DOS
-#out_file1.write('\n')
-#
-##Printing Total_down
-#if ispin == 2:    
-#    for i in range(n_E_grid):
-#        out_file1.write('{0:.4f}\t{1:.4f}\n'.format(total_dos.energies[i]-total_dos.efermi,-1.0*total_dos.densities[Spin.down][i]))
-#    #p4vasp format: Spacer between different DOS
-#    out_file1.write('\n')
-#
-##Printing each Element
-#Element_list=list_element
-#for k_element in Element_list:
-#    # Loop for each spin
-#    for j in range(ispin):
-#        #if ispin==2, this will go through Spin.down
-#        #j_spin is either Spin.up or Spin.down
-#        j_spin=spin_list[j]
-#        # Loop for each energy grid
-#        for i in range(n_E_grid):
-#            out_file1.write('{0:.4f}\t{1:.4f}\n'.format(total_dos.energies[i]-total_dos.efermi,float(int(j_spin))*element_dos[Element[k_element]].densities[j_spin][i]))
-#        #p4vasp format: Spacer between different array
-#        out_file1.write('\n')
-#
-#
-
-#out_file1.close()
-#print ('Interpolated Band gap is: ')
-#if ispin==1:
-#    print('Only up-spin is printed for following components')
-#else:
-#    print('Spin up/down is printed for following components')
-#print ('--Elements: '+str(list_element))
-#print ('--Atoms: '+str(list_sites))
-
+### Construct entries and options ############################
+list_entries=[]
+val=dict()
+# Make list of entries
+for i in range(3,len(sys.argv)):
+    #option arguments
+    
+    #option: Bond with one '-'
+    if len(re.findall('-',sys.argv[i]))==1:
+        current_entry=sys.argv[i]
+        atom1_str,atom2_str=re.split('-',current_entry)
+        current_value=Bond_length(struct,label2site_index,atom1_str,atom2_str)
+    
+    #option: Bond with two '-'
+    elif len(re.findall('-',sys.argv[i]))==2:
+        current_entry=sys.argv[i]
+        atom1_str,atom2_str,atom3_str=re.split('-',current_entry)
+        current_value=Bond_angle(struct,label2site_index,atom1_str,atom2_str,atom3_str)
+    
+    #option: lattice parameters
+    elif sys.argv[i] == 'a':
+        current_value=struct.lattice.a
+    elif sys.argv[i] == 'b':
+        current_value=struct.lattice.b
+    elif sys.argv[i] == 'c':
+        current_value=struct.lattice.c
+    elif sys.argv[i] == 'alpha':
+        current_value=struct.lattice.alpha
+    elif sys.argv[i] == 'beta':
+        current_value=struct.lattice.beta
+    elif sys.argv[i] == 'gamma':
+        current_value=struct.lattice.gamma
+    elif sys.argv[i] == 'V':
+        current_value=struct.lattice.volume
+    
+    #option: Band gap
+    elif sys.argv[i] == 'Eg':
+        current_value=total_dos.get_gap()
+    
+    
+    # supporting simple operations
+    # 
+    else:
+        current_entry=sys.argv[i]
+        current_entry=re.sub(r'\[',"val['",current_entry)
+        current_entry=re.sub(r'\]',"']",current_entry)
+        current_value=eval(current_entry)
+        
+#    val.append(current_value)
+    val.update({sys.argv[i]:current_value})
+    # normal entry arguments
+#    else:
+#        list_entries.append(sys.argv[i])
+##############################################################
