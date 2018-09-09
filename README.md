@@ -1,8 +1,9 @@
 # VASP-Structural_Descriptors
 
 Command 
-$ python Structural_descriptor.py [filenames] [entry or entries]
-
+'''
+python Structural_descriptor.py [filenames] [entry or entries]
+'''
 - [filename]: name of vasprun.xml file or POSCAR file (wildcard (*,?) is usable!)
     if you use xml file, you can extract band gap despite longer execution time
 - [entry or entries]: Descripor of user choice
