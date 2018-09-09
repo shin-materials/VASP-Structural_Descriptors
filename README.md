@@ -1,6 +1,9 @@
 # VASP-Structural_Descriptors
 
-Command 
+### Simple description:
+Pymatgen-based python script to extract structural descriptors from vasprun.xml or POSCAR file(s)
+
+### How to use:
 ```
 python Structural_descriptor.py [filenames] [entry or entries]
 ```
