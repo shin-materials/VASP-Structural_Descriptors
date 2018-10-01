@@ -85,8 +85,8 @@ def print_format(number):
         str_form='0.0000'
     elif floor(log10(abs(number)))>=4:
         str_form=format(number,'.3E')
-    elif floor(log10(abs(number)))<0 and floor(log10(abs(number)))>=-1:
-        str_form=format(number,'-.4g')
+    elif floor(log10(abs(number)))<=0 and floor(log10(abs(number)))>=-1:
+        str_form=format(number,'-.4f')
     elif floor(log10(abs(number)))<=-1 and floor(log10(abs(number)))>=-3:
         str_form=format(number,'-5.5f')
     elif floor(log10(abs(number)))<-3:
