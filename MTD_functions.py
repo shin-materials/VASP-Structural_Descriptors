@@ -81,7 +81,9 @@ def ave(numbers):
     return float(sum(numbers)) / max(len(numbers), 1)
 
 def print_format(number):
-    if floor(log10(abs(number)))>=4:
+    if number == 0:
+        str_form='0.0000'
+    elif floor(log10(abs(number)))>=4:
         str_form=format(number,'.3E')
     elif floor(log10(abs(number)))<=-1 and floor(log10(abs(number)))>=-3:
         str_form=format(number,'-5.5f')
