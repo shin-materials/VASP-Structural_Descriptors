@@ -5,7 +5,7 @@ Pymatgen-based python script to extract structural descriptors from vasprun.xml 
 
 ### How to use:
 ```
-python Structural_descriptor.py [filenames] [entry or entries]
+python Structural_descriptor.py [filenames or entries]
 ```
 - [filename]: name of vasprun.xml file or POSCAR file (wildcard (*,?) is usable!)
     if you use xml file, you can extract band gap despite longer execution time
@@ -19,6 +19,9 @@ python Structural_descriptor.py [filenames] [entry or entries]
     - Angle between 'far' apart atoms are not reliable with this script
   - SG, #SG: Space group with symbol or space group number
   - Eg: Band gap (xml file is needed for this)
+  - Ewald: Ewald summation of the given structure (nominal charge states is applied within script)
+  - natom: Number of atoms in the structure
+  - GII: Global Instability Index (GII) captures instability of deviation from ideal coordination environment. This uses 'Bond_Valcne2016.csv' file as reference.
   - Mathmatical operation of descriptors:
      - If you format descriptor or column with bracket ('[' and ']'), you can execute simple operations.
      - Ex) [Fe5-O1]+[Fe5-O2]: sum of bond length of Fe5-O1 and Fe5-O2
@@ -26,3 +29,4 @@ python Structural_descriptor.py [filenames] [entry or entries]
      - Ex) [Fe5-O1]/[Fe5-O2]: ratio of bond length between Fe5-O1 and Fe5-O2
      - Ex) [1]/[2]: ratio between 1th column value and 2nd column value
             (Note that 0th column is for filename).
+     - Note: When you use this function on Bash environment, you might need to envelop the entry with single quotation marks (') to avoid syntax error coming from parenthesis.
