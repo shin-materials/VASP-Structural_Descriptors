@@ -17,7 +17,7 @@ $ python Structural_descriptor.py [filenames] [entry or entries]
         Note: This feature is to calcaulte bond angle so it automatically
         copies the atom so that 'bond angle' is calculated.
         Angle between 'far' apart atoms are not reliable with this script
-    - SG, #SG: Space group with symbol or space group number
+    - SG, SG#: Space group with symbol or space group number
     - Eg: Band gap (xml file is needed for this)
     - Mathmatical operation of descriptors:
         If you format descriptor or column with bracket ('[' and ']'), 
@@ -47,26 +47,41 @@ from pymatgen.io.vasp.outputs import Vasprun, Poscar
 from pymatgen import Structure
 from pymatgen.util.coord import pbc_shortest_vectors, get_angle
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+from pymatgen.core.periodic_table import Element
 from MTD_functions import *
+from math import pi
 import sys
 import re
 import glob
-
+import numpy as np
+from numpy import sqrt
+import os
 
 #start=timeit.default_timer()
 if len(sys.argv) ==1:
-    sys.argv=['script_name',"*.vasp",'SG','Mn5-O18', 'Mn5-O1', '13-17' ,'Mn5-O18-Mn8','a', '[Mn5-O18]+[Mn5-O19]', '([3]-[2])', 'V']
+    #sys.argv=['script_name',"*.vasp",'SG','GII','Mn5-O18', 'Mn5-O1', '13-17' ,'Mn5-O18-Mn8','a', '[Mn5-O18]+[Mn5-O19]', '([-1]-[-2])', 'V']
+    sys.argv=['script_name',"*.vasp",'GII', 'Ewald']
 
 
 ##### Part 1: Preparation. File lists and print label line  ###################
-# Collect list of files with glob
-file_list=glob.glob(sys.argv[1])
+## Collect list of files with glob
+#file_list=glob.glob(sys.argv[1])
+#file_list.sort()
+## Construct list_entries, which will be used for label of result
+## sys.argv[0] is name of script,
+## and sys.argv[1] is list of file names, so rename the labe as 'Filename'
+#list_entries=sys.argv[1::]
+#list_entries[0]='Filename'
 
-# Construct list_entries, which will be used for label of result
-# sys.argv[0] is name of script,
-# and sys.argv[1] is list of file names, so rename the labe as 'Filename'
-list_entries=sys.argv[1::]
-list_entries[0]='Filename'
+file_list=list()
+list_entries=list(['Filename'])
+for entry in sys.argv[1::]:
+    # if the entry is the file name, append it to file_list
+    # otherwise, append it to list of entries.
+    if os.path.isfile(entry):
+        file_list.append(entry)
+    else:
+        list_entries.append(entry)
 
 # Printing label
 # formatted for better outlook.
@@ -127,6 +142,9 @@ for filename in file_list:
         """
         
         try:
+            #option: atomic features
+#            if 
+            
             #option: Bond with one '-'
             if len(re.findall('-',str_entry))==1:
                 atom1_str,atom2_str=re.split('-',str_entry)
@@ -152,20 +170,31 @@ for filename in file_list:
                 current_value=struct.lattice.gamma
             elif str_entry == 'V':
                 current_value=struct.lattice.volume
+            elif str_entry == 'GII':
+                # Maybe insert a line to extract formal valcne list from CONTCAR
+                current_value=gii_compute(struct)  ################ To be done
+            elif str_entry == 'Ewald':
+                # Maybe insert a line to extract formal valcne list from CONTCAR
+                current_value=Calc_Ewald(struct)  ################ To be done
             #option: spacegroup
             elif str_entry == 'SG':
                 current_value=SpacegroupAnalyzer(struct).get_space_group_symbol()
-            elif str_entry == '#SG':
+            elif str_entry == 'SG#':
                 current_value=SpacegroupAnalyzer(struct).get_space_group_number()
             #option: Band gap
             elif str_entry == 'Eg':
                 current_value=total_dos.get_gap()
+                
+            # the number of atoms in the lattice
+            elif str_entry == 'natom':
+                current_value=struct.composition.num_atoms
             
             # If there is no matching key
             else:
                 current_value='N/A'
             
         except KeyError:
+            print(str_entry)
             # Error message
             # This often happens when user tried incorrect atom label
             list_errors.append('Note: Check atom labels')
@@ -203,11 +232,9 @@ for filename in file_list:
             for component in list_components:
                 # component[1:-1] is to extract strings between brackets
                 
-                # Component case1: able to call descriptor function
-                if obtain_descriptor(component[1:-1]) != 'N/A':
-                    comp_value=obtain_descriptor(component[1:-1])
-                # Component case2: numeric and calls value from list_values
-                elif component[1:-1].isnumeric():
+                # Component case1: numeric and calls value from list_values
+#                elif component[1:-1].isnumeric():
+                if len(re.findall('[^0-9:-]',component[1:-1]))==0:
                     # This is when bracket calls label value
                     try:
                         comp_value=list_values[int(component[1:-1])]
@@ -216,6 +243,11 @@ for filename in file_list:
                         list_errors.append('Note: Check the column indicies in the brackets')
 #                        print ("There is a syntax problem within bracket")
                         break
+                
+                # Component case2: able to call descriptor function
+                elif obtain_descriptor(component[1:-1]) != 'N/A':
+                    comp_value=obtain_descriptor(component[1:-1])
+                
                 # Component case3: comp_value is N/A and it is not index
                 else:
                     # Then the value of formula is not reliable, thus print 'N/A'
