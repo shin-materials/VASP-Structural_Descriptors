@@ -61,6 +61,7 @@ import os
 if len(sys.argv) ==1:
     #sys.argv=['script_name',"*.vasp",'SG','GII','Mn5-O18', 'Mn5-O1', '13-17' ,'Mn5-O18-Mn8','a', '[Mn5-O18]+[Mn5-O19]', '([-1]-[-2])', 'V']
     sys.argv=['script_name',"*.vasp",'GII', 'Ewald']
+    sys.argv=['script_name',"SMO*.vasp",'Mn1-O11', 'Mn1-O5-Mn4']
 
 
 ##### Part 1: Preparation. File lists and print label line  ###################
@@ -80,6 +81,10 @@ for entry in sys.argv[1::]:
     # otherwise, append it to list of entries.
     if os.path.isfile(entry):
         file_list.append(entry)
+    elif '*' in entry or '?' in entry:
+        temp_list=glob.glob(entry)
+        temp_list.sort()
+        file_list=file_list+temp_list
     else:
         list_entries.append(entry)
 
