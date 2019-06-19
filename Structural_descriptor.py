@@ -91,7 +91,7 @@ for entry in sys.argv[1::]:
 # Printing label
 # formatted for better outlook.
 # Position is determined by maximum length of file names
-print(list_entries[0].ljust(len(max(file_list,key=len))+2)+\
+print(list_entries[0].ljust(max(10,len(max(file_list,key=len))+2))+\
       '  '.join('%-6s' % entry for entry in list_entries[1::]))
 
 # list_errors is to collect error messages for user
@@ -273,7 +273,7 @@ for filename in file_list:
     
     #### Part 2-5: Printing values
     # Set starting position first, for better outlook
-    str_value_line=(list_values[0].ljust(len(max(file_list,key=len))+2))
+    str_value_line=(list_values[0].ljust(max(10,len(max(file_list,key=len))+2)))
     # iterate for each value, depending on value type
     for i, value in enumerate(list_values[1::]):
         # value case 1: string

@@ -12,6 +12,7 @@ from pymatgen.core.periodic_table import Element
 from pymatgen import Structure
 from pymatgen.util.coord import pbc_shortest_vectors, get_angle
 from math import log10, floor
+import os
 import sys
 import re
 import numpy as np
@@ -137,7 +138,8 @@ def Calc_Ewald(pmg_struct, formal_val=[]):
 ####################################################################
 
 # Read Bond valence dataset
-bv_data = pd.read_csv("Bond_valences2016.csv")
+fileDir = os.path.dirname(os.path.realpath(sys.argv[0]))
+bv_data = pd.read_csv(os.path.join(fileDir,"Bond_valences2016.csv"))
 # Use element names and valences to lookup bond valence
 def get_bv_params(cation, anion, cat_val, an_val):
     bond_val_list = bv_data[(bv_data['Atom1'] == cation) & (bv_data['Atom1_valence'] == cat_val)\
